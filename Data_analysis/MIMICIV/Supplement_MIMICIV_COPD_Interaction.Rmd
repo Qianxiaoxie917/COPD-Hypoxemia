@@ -1,0 +1,48 @@
+---
+title: 'Interaction Analysis of PCO2 and SpO2 in MIMICIV '
+output: html_document
+date: "2023-06-08"
+---
+load MIMICIV subset data of COPD patients
+```{r}
+library(mgcv)
+
+source("funs.R")
+
+load("MIMICIV_COPD_subset.RData")
+```
+
+
+
+```{r}
+MIMICIV_COPD <- MIMICIV_COPD_subset
+
+MIMICIV_COPD0 <- MIMICIV_COPD[MIMICIV_COPD$oxygen_therapy == "SupplementalOxygen", ]
+
+```
+
+
+
+```{r}
+gamfitMed_MIMICIV0_pCO2 <- gam(mortality_in_Hospt ~ 
+ s(median, pCO2)  + gender + s(age) + s(sofatotal) +s(vent_duration) , data = MIMICIV_COPD0, family = binomial)
+
+
+summary(gamfitMed_MIMICIV0_pCO2)
+
+```
+
+
+
+```{r}
+mgcv::vis.gam(gamfitMed_MIMICIV0_pCO2, view = c("median", "pCO2"),
+        theta = 50, n.grid = 50, lwd = 0.4, ticktype = "detailed", xlab = "Median SpO2 (%)", ylab = "pCO2 (mmHG)", zlab = "Linear predictor", main = "MIMICIV-CRD")
+
+```
+
+
+
+
+
+
+

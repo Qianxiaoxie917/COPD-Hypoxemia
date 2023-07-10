@@ -1,0 +1,105 @@
+---
+title: 'Subgroup Analysis of Ethnicity in MIMICIV '
+output: html_document
+date: "2023-06-08"
+---
+load MIMICIV subset data of COPD patients
+```{r}
+library(mgcv)
+
+source("funs.R")
+
+load("MIMICIV_COPD_subset.RData")
+```
+
+
+```{r}
+table(MIMICIV_COPD_subset$race)
+```
+
+
+```{r}
+MIMICIV_COPD <- MIMICIV_COPD_subset[grepl("BLACK", MIMICIV_COPD_subset$race),  ]
+
+MIMICIV_COPD0 <- MIMICIV_COPD[MIMICIV_COPD$oxygen_therapy == "SupplementalOxygen", ]
+
+MIMICIV_COPD1 <- MIMICIV_COPD[MIMICIV_COPD$oxygen_therapy == "SupplementalOxygen" & MIMICIV_COPD$Hypercapnia == "Non-Hypercapnia", ]
+
+
+MIMICIV_COPD2 <- MIMICIV_COPD[MIMICIV_COPD$oxygen_therapy == "SupplementalOxygen" & MIMICIV_COPD$Hypercapnia == "Hypercapnia", ]
+
+```
+
+
+
+Run the results
+```{r}
+Re10_MIMICIV <- GAM_proportion(MIMICIV_COPD0)
+
+print(Re10_MIMICIV)
+
+Re11_MIMICIV <- GAM_proportion(MIMICIV_COPD1)
+
+print(Re11_MIMICIV)
+
+
+Re12_MIMICIV <- GAM_proportion(MIMICIV_COPD2)
+
+
+save(Re10_MIMICIV, Re11_MIMICIV, Re12_MIMICIV, file = "Res_MIMICIV_BLACK.RData")
+
+
+
+
+```
+
+
+
+```{r}
+beta_CoI <- array(NA_real_, c(9, 3, 3))
+
+beta_CoI[ , , 1] <- Re10_MIMICIV[9:1, ]
+
+beta_CoI[, , 2] <- Re11_MIMICIV[9:1, ]
+
+beta_CoI[, , 3] <- Re12_MIMICIV[9:1, ]
+
+x_offset <- .30
+ylim = range(beta_CoI)
+# Set margins to make room for x axis labels.
+# Set up empty plot
+
+plot(
+  x = 0,
+  type = 'n',
+  xlim = c(1 - 3 * x_offset, 9 + 3 * x_offset),
+  ylim = ylim,
+  xlab = expression("SpO"[2]*" range"),
+  ylab = "Odds ratio for hospital mortaility",
+  xaxt = "n"
+)
+
+for (r in 1:9) {
+  plot_CI(x = r - x_offset, CI = beta_CoI[r, ,  1])
+  plot_CI(x = r , CI = beta_CoI[r, ,  2], lty = 2)
+  plot_CI(x = r + x_offset, CI = beta_CoI[r, ,  3], lty = 3)
+}
+abline(h = 1, col = "red")
+axis(1, at = 1:9, labels=c("88-92", "89-93", "90-94", "91-95", "92-96", "93-97", "94-98", "95-99", "96-100"))
+legend("topright", legend=c("All", "Non-Hypercapnia", "Hypercapnia"), lty = 1:3, cex=0.8, bty ="n")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

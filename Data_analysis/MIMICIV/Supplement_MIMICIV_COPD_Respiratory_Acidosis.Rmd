@@ -1,0 +1,108 @@
+---
+title: 'Subgroup Analysis of Respiratory Acidosis in MIMICIV '
+output: html_document
+date: "2023-06-08"
+---
+load MIMICIV subset data of COPD patients
+```{r}
+library(mgcv)
+
+source("funs.R")
+
+load("MIMICIV_COPD_subset2.RData")
+```
+
+
+```{r}
+MIMICIV_COPD <- MIMICIV_COPD_subset2
+
+MIMICIV_COPD0 <- MIMICIV_COPD[MIMICIV_COPD$oxygen_therapy == "SupplementalOxygen", ]
+
+MIMICIV_COPD1 <- MIMICIV_COPD[MIMICIV_COPD$oxygen_therapy == "SupplementalOxygen" & MIMICIV_COPD$Hypercapnia == "Non-Hypercapnia", ]
+
+
+MIMICIV_COPD2 <- MIMICIV_COPD[MIMICIV_COPD$oxygen_therapy == "SupplementalOxygen" & MIMICIV_COPD$Hypercapnia == "Hypercapnia", ]
+
+```
+
+```{r}
+MIMICIV_pCO2pH <- MIMICIV_COPD[, c("pCO2", "pH")]
+
+save(MIMICIV_pCO2pH, file = "MIMICIV_pCO2pH.RData")
+```
+
+
+
+```{r}
+plot(pCO2 ~ pH, data = MIMICIV_pCO2pH, main = "MIMIC-IV", pch = 4L, ylab = "pCO2 (mmHg)")
+
+```
+
+
+```{r}
+MIMICIV_COPD2_subset1 <- MIMICIV_COPD2[MIMICIV_COPD2$ResAcid == "Acid", ]
+
+MIMICIV_COPD2_subset2 <- MIMICIV_COPD2[MIMICIV_COPD2$ResAcid != "Acid", ]
+```
+
+```{r}
+Re3_MIMICIV <- GAM_proportion(MIMICIV_COPD2_subset1)
+
+print(Re3_MIMICIV)
+
+Re4_MIMICIV <- GAM_proportion(MIMICIV_COPD2_subset2)
+
+print(Re4_MIMICIV)
+
+
+```
+
+
+```{r}
+beta_CoI <- array(NA_real_, c(9, 3, 3))
+
+beta_CoI[ , , 1] <- Re2_MIMICIV[9:1, ]
+
+beta_CoI[, , 2] <- Re3_MIMICIV[9:1, ]
+
+beta_CoI[, , 3] <- Re4_MIMICIV[9:1, ]
+
+x_offset <- .30
+ylim = range(beta_CoI)
+# Set margins to make room for x axis labels.
+# Set up empty plot
+
+plot(
+  x = 0,
+  type = 'n',
+  xlim = c(1 - 3 * x_offset, 9 + 3 * x_offset),
+  ylim = ylim,
+  xlab = expression("SpO"[2]*" range"),
+  ylab = "Odds ratio for hospital mortaility",
+  xaxt = "n"
+)
+
+for (r in 1:9) {
+  plot_CI(x = r - x_offset, CI = beta_CoI[r, ,  1], lty=3)
+  plot_CI(x = r , CI = beta_CoI[r, ,  2], lty = 4)
+  plot_CI(x = r + x_offset, CI = beta_CoI[r, ,  3], lty = 5)
+}
+abline(h = 1, col = "red")
+axis(1, at = 1:9, labels=c("88-92", "89-93", "90-94", "91-95", "92-96", "93-97", "94-98", "95-99", "96-100"))
+legend("topright", legend=c("Hypercapnia", "Acidosis", "Non-Acidosis"), lty = 3:5, cex=0.8, bty ="n")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

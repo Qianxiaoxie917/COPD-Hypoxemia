@@ -1,0 +1,98 @@
+---
+title: 'Analysis of COPD patients in MIMICIV'
+output: html_document
+date: "2023-06-08"
+---
+load MIMICIV subset data of COPD patients
+```{r}
+library(mgcv)
+
+source("funs.R")
+
+load("MIMICIV_COPD_subset.RData")
+```
+
+```{r}
+MIMICIV_COPD <- MIMICIV_COPD_subset
+
+MIMICIV_COPD0 <- MIMICIV_COPD[MIMICIV_COPD$oxygen_therapy == "SupplementalOxygen", ]
+
+MIMICIV_COPD1 <- MIMICIV_COPD[MIMICIV_COPD$oxygen_therapy == "SupplementalOxygen" & MIMICIV_COPD$Hypercapnia == "Non-Hypercapnia", ]
+
+
+MIMICIV_COPD2 <- MIMICIV_COPD[MIMICIV_COPD$oxygen_therapy == "SupplementalOxygen" & MIMICIV_COPD$Hypercapnia == "Hypercapnia", ]
+
+```
+
+
+
+Run the results
+```{r}
+Re0_MIMICIV <- GAM_proportion(MIMICIV_COPD0)
+
+print(Re0_MIMICIV)
+
+Re1_MIMICIV <- GAM_proportion(MIMICIV_COPD1)
+
+print(Re1_MIMICIV)
+
+
+Re2_MIMICIV <- GAM_proportion(MIMICIV_COPD2)
+
+
+print(Re2_MIMICIV)
+
+
+save(Re0_MIMICIV, Re1_MIMICIV, Re2_MIMICIV, file = "Res_MIMICIV.RData")
+
+
+```
+
+
+
+```{r}
+load("Res_MIMICIV.RData")
+
+```
+
+
+```{r}
+
+beta_CoI <- array(NA_real_, c(9, 3, 3))
+
+beta_CoI[ , , 1] <- Re0_MIMICIV[9:1, ]
+
+beta_CoI[, , 2] <- Re1_MIMICIV[9:1, ]
+
+beta_CoI[, , 3] <- Re2_MIMICIV[9:1, ]
+
+x_offset <- .30
+ylim = range(beta_CoI)
+# Set margins to make room for x axis labels.
+# Set up empty plot
+
+pdf(file = "Results for MIMICIV.pdf", width = 12,  height = 6)
+
+plot(
+  x = 0,
+  type = 'n',
+  xlim = c(1 - 3 * x_offset, 9 + 3 * x_offset),
+  ylim = ylim,
+  xlab = expression("SpO"[2]*" range"),
+  ylab = "Odds ratio for hospital mortaility",
+  xaxt = "n"
+)
+
+for (r in 1:9) {
+  plot_CI(x = r - x_offset, CI = beta_CoI[r, ,  1])
+  plot_CI(x = r , CI = beta_CoI[r, ,  2], lty = 2)
+  plot_CI(x = r + x_offset, CI = beta_CoI[r, ,  3], lty = 3)
+}
+abline(h = 1, col = "red")
+axis(1, at = 1:9, labels=c("88-92", "89-93", "90-94", "91-95", "92-96", "93-97", "94-98", "95-99", "96-100"))
+legend("topright", legend=c("All", "Non-Hypercapnia", "Hypercapnia"), lty = 1:3, cex=0.8, bty ="n")
+
+dev.off()
+```
+
+

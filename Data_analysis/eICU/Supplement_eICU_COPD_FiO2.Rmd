@@ -1,0 +1,107 @@
+---
+title: 'Sensitivity Analysis of FiO2 in eICU '
+output: html_document
+date: "2023-06-08"
+---
+load eICU subset data of COPD patients
+```{r}
+library(mgcv)
+
+source("funs.R")
+
+load("eICU_COPD_subset1.RData")
+```
+
+
+```{r}
+eICU_SpO2FiO2 <- eICU_COPD_subset1[, c("median", "median_FiO2")]
+
+save(eICU_SpO2FiO2, file = "eICU_SpO2FiO2.RData")
+```
+
+
+```{r}
+cuts <- c(70, 81, 86, 91, 96, 100)
+
+Spo2_cuts <- cut(eICU_SpO2FiO2$median, breaks = cuts, labels = c("70-80", "81-85", "86-90", "91-95", "96-100"))
+
+boxplot(eICU_SpO2FiO2$median_FiO2 ~ Spo2_cuts, breaks = cuts, col = "transparent",  xlab = "median SpO2", ylab= "median FiO2")
+
+```
+
+```{r}
+eICU_COPD <- eICU_COPD_subset1
+
+eICU_COPD0 <- eICU_COPD[eICU_COPD$oxygen_therapy == "SupplementalOxygen", ]
+
+eICU_COPD1 <- eICU_COPD[eICU_COPD$oxygen_therapy == "SupplementalOxygen" & eICU_COPD$Hypercapnia == "Non-Hypercapnia", ]
+
+
+eICU_COPD2 <- eICU_COPD[eICU_COPD$oxygen_therapy == "SupplementalOxygen" & eICU_COPD$Hypercapnia == "Hypercapnia", ]
+
+```
+
+
+
+Run the main model
+```{r}
+Re00_eICU <- GAM_proportion(eICU_COPD0)
+
+print(Re00_eICU)
+
+Re01_eICU <- GAM_proportion(eICU_COPD1)
+
+print(Re01_eICU)
+
+
+Re02_eICU <- GAM_proportion(eICU_COPD2)
+
+
+print(Re02_eICU)
+
+```
+
+plot for the results
+```{r}
+beta_CoI <- array(NA_real_, c(9, 3, 3))
+
+beta_CoI[ , , 1] <- Re00_eICU[9:1, ]
+
+beta_CoI[, , 2] <- Re01_eICU[9:1, ]
+
+beta_CoI[, , 3] <- Re02_eICU[9:1, ]
+
+x_offset <- .30
+ylim = range(beta_CoI)
+# Set margins to make room for x axis labels.
+# Set up empty plot
+
+plot(
+  x = 0,
+  type = 'n',
+  xlim = c(1 - 3 * x_offset, 9 + 3 * x_offset),
+  ylim = ylim,
+  xlab = expression("SpO"[2]*" range"),
+  ylab = "Odds ratio for hospital mortaility",
+  xaxt = "n"
+)
+
+for (r in 1:9) {
+  plot_CI(x = r - x_offset, CI = beta_CoI[r, ,  1])
+  plot_CI(x = r , CI = beta_CoI[r, ,  2], lty = 2)
+  plot_CI(x = r + x_offset, CI = beta_CoI[r, ,  3], lty = 3)
+}
+abline(h = 1, col = "red")
+axis(1, at = 1:9, labels=c("88-92", "89-93", "90-94", "91-95", "92-96", "93-97", "94-98", "95-99", "96-100"))
+legend("topright", legend=c("All", "Non-Hypercapnia", "Hypercapnia"), lty = 1:3, cex=0.8, bty ="n")
+
+
+```
+
+
+
+
+
+
+
+
